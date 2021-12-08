@@ -1,31 +1,34 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
+#include <SFML/Window.hpp>
 #include <cmath>
 #include <ctime>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
-#include "player.h"
-#include "button.h"
+#include "parole.h"
 #include "sanstete.h"
 #include "gb.h"
 #include "sanscorps.h"
-#include "fightmenu.h"
+#include "menuItem.h"
+#include "menustart.h"
+#include "life.h"
 using namespace std;
 using namespace sf;
-
-
-
 
 
 int main(){
   srand(static_cast<unsigned int>(time(NULL)));
 
+
+  //teste de parole:
+  parole test(20,"./Font/DTM-Sans.otf");
+  
   //Boutton de combat:
-  Button Fight("../premier test/Sprite/Fight/fight.png");
-  Button Items("../premier test/Sprite/item/item.png");
-  Button Act("../premier test/Sprite/act/act.png");
-  Button Mercy("../premier test/Sprite//mercy/mercy.png");
+  Button Fight("Sprite/Fight/fight.png");
+  Button Items("Sprite/item/item.png");
+  Button Act("Sprite/act/act.png");
+  Button Mercy("Sprite/mercy/mercy.png");
   Fight.setTextureRect(0,0,115,43);
   Items.setTextureRect(0,0,115,43);
   Act.setTextureRect(0,0,113,43);
@@ -37,8 +40,10 @@ int main(){
   FightMenu FMenu(Fight,Act,Items,Mercy);
   bool uTurn=true;
 
+  //Cadre de combat test:
+  cadre cadre1;
 
-  
+
   //constante nécessaire:
   int gameWidth = 800;
   int gameHeight = 700;
@@ -49,28 +54,25 @@ int main(){
   float rayon=0;
 
   //Gravity Constant:
-  const int groundheight=500;
+  const int groundheight=490;
   const float gravityspeed=5;
   bool isJumping=false;
   
   //definition de la fenêtre:
-  RenderWindow window(VideoMode(gameWidth, gameHeight,32), "Undertale", Style::Titlebar |Style::Close);
+  Image icon;
+  if(!icon.loadFromFile("./Sprite/Sans/spr_sans_bface_5.png")){
+    return EXIT_FAILURE;
+  }
+  RenderWindow window(VideoMode(gameWidth, gameHeight,32), "Undertale", Style::Titlebar |Style::Resize |Style::Close);
+  window.setIcon(30,28,icon.getPixelsPtr());
   window.setVerticalSyncEnabled(true);
 
-  //test du rouge:
-  RectangleShape square2;
-  square2.setSize(paddlesize - Vector2f(3,3));
-  square2.setOutlineThickness(1);
-  square2.setOutlineColor(Color::Red);
-  square2.setFillColor(Color::Red);
-  square2.setOrigin(paddlesize/2.f);
-  square2.setPosition(420.f,110.f);
-
+ 
   //Definition des personnages:
-  Player heart(92,99,99,2.5,"../premier test/Sprite/heart/spr_heart_0.png");
-  heart.sprite.setScale(2.f,2.f);
-  SansTete sanstete("../premier test/Sprite/Sans/sans_head.png");
-  SansCorps sanscorps("../premier test/Sprite/Sans/sans_body.png");
+  Player heart(92,99,99,2.5,"Sprite/heart/spr_heart_0.png");
+  life lp_P;
+  SansTete sanstete("Sprite/Sans/sans_head.png");
+  SansCorps sanscorps("Sprite/Sans/sans_body.png");
   sanstete.sprite.setScale(3.f,3.f);
   sanscorps.sprite.setScale(3.f,3.f);
   sanstete.setTextureRect(34,0,35,30);
@@ -83,31 +85,11 @@ int main(){
   rect.setPosition({gaster.getX()+26.f,gaster.getY()+85.f});
 
   //Message de base
-  Text pauseMessage;
-  Text play;
-  Font font;
-  Text exit;
-  if(!font.loadFromFile("../MonsterFriendFore.otf")){
-    return EXIT_FAILURE;
-  }
-  pauseMessage.setFont(font);
-  pauseMessage.setCharacterSize(60);
-  pauseMessage.setPosition(140.f,80.f);
-  pauseMessage.setFillColor(Color::White);
-  pauseMessage.setString("UNdERTaLE");
+  menustart Start;
+  //menuItem:
+  menuItem menu; 
   
-  play.setFont(font);
-  play.setCharacterSize(40);
-  play.setPosition(40.f,350.f);
-  play.setFillColor(Color::Yellow);
-  play.setString("  Play");
-
-  exit.setFont(font);
-  exit.setCharacterSize(40);
-  exit.setPosition(40.f,470.f);
-  exit.setFillColor(Color::White);
-  exit.setString("  Exit");
-
+  
   //Proprieties:
   Time AITime=seconds(0.1f);
   bool isPlaying=false;
@@ -115,21 +97,33 @@ int main(){
   bool ExitButtonSelected=false;
   bool PlayButtonPressed=false;
   bool ExitButtonPressed=false;
-
-
+  Text pauseMessage;
+  bool ds_item=false;
   int presse=4;
   bool plafond=false;
-  bool blue=false;
+  bool blue=true;
   int Button=0;
   //test de durée:
   Clock clock;
   Clock Timer;
+  Clock combat;
+  Clock appear;
+  int yolo=0;
   while(window.isOpen()){
     Event event;
     if(isPlaying){
       if(!uTurn){
+	if(combat.getElapsedTime().asSeconds()>10.f){
+	  uTurn=true;
+	  presse=4;
+	  while (cadre1.rectcadre.left!=0){
+	    cadre1.animationFinFight(Timer);
+	  }
+	}
 	heart.movement(blue, isJumping, plafond,groundheight);
       }
+      test.setPosition(50.f,200.f);
+      test.setText("whalla bila",yolo, appear,0.09f);
       if(clock.getElapsedTime().asSeconds()>0.5f){
 	if(sanscorps.body.left==224){
 	  sanscorps.body.left=0;
@@ -148,134 +142,73 @@ int main(){
         break;
       }
       if(!isPlaying){
-	if (event.type==sf::Event::KeyPressed){
-	  switch(event.key.code){
-	  case sf::Keyboard::Up:{
-	    if(!PlayButtonSelected){
-	      PlayButtonSelected=true;
-	      ExitButtonSelected=false;
-	    }
-	    else{
-	      PlayButtonSelected=false;
-	      ExitButtonSelected=true;
-	    }
-	    break;
-	  }
-	  case sf::Keyboard::Down:{
-	    if (!ExitButtonSelected){
-	      PlayButtonSelected=false;
-	      ExitButtonSelected=true;
-	    }
-	    else{
-	      PlayButtonSelected=true;
-	      ExitButtonSelected=false;
-	    }
-	    break;
-	  }
-	  case sf::Keyboard::Return:{
-	    PlayButtonPressed=false;
-	    ExitButtonPressed=false;
-	    if(PlayButtonSelected){
-	      PlayButtonPressed=true;
-	    }
-	    else{
-	      ExitButtonPressed=true;
-	    }
-	    break;
-	  }
-	  default:{
-	    break;
-	  }  
-	  }
-	}
+	Start.etatmenu(PlayButtonSelected,ExitButtonSelected,PlayButtonPressed,ExitButtonPressed,event);
       }
       if(isPlaying){
 	if(!uTurn){
-	  switch(event.type){
-	  case sf::Event::KeyReleased:
-	    isJumping=false;
-	  }
+	  heart.released(event,isJumping,groundheight);
 	}
 	if(uTurn){
-	  Button=FMenu.selectedButton(Button, heart.sprite,event,presse);
+	  if(!ds_item){
+	    Button=FMenu.selectedButton(Button, heart.sprite,event,presse);
+	  }
+	  if(ds_item){
+	    menu.selected(heart,event);
+	  }
 	}
       }
     }
     if(!isPlaying){
-      if(PlayButtonSelected){
-	play.setFillColor(Color::Yellow);
-	exit.setFillColor(Color::White);
-	heart.setPosition({20.f,355.f});
-	window.clear(Color(Color::Black));
-	window.draw(square2);
-	window.draw(pauseMessage);
-	heart.drawTo(window);
-	window.draw(play);
-	window.draw(exit);	
-      }
-      else{
-	exit.setFillColor(Color::Yellow);
-	play.setFillColor(Color::White);
-	heart.setPosition({20.f,475.f});
-	window.clear(Color(Color::Black));
-	window.draw(square2);
-	window.draw(pauseMessage);
-	heart.drawTo(window);
-	window.draw(play);
-	window.draw(exit);
-      }
-      if(PlayButtonPressed){
-	isPlaying=true;
-	if (!uTurn){
-	  heart.setPosition({450.f,50.f});
-	  heart.sprite.setScale(1.f,1.f);
-	}
-	else{
-	  heart.setPosition({110.f,612.f});
-	  heart.sprite.setScale(1.f,1.f);
-	}
-      }
-      else if(ExitButtonPressed){
-	window.close();
-	break;
-      }
+      Start.selected(window,PlayButtonPressed,ExitButtonPressed,isPlaying,PlayButtonSelected,ExitButtonSelected);
     }
-    else{
+    if(isPlaying){
       if(!uTurn){
-	if((heart.getY()< groundheight) && (isJumping==false) && (blue) ||(plafond)){
-	  heart.move({0, gravityspeed});
-	  if(heart.getY()==groundheight){
-	    plafond=false;
-	  }
-	}
+	heart.gravity(event,groundheight,plafond,isJumping,blue);
       }
-      if(uTurn){
-	FMenu.EtatDuMenu(Button,heart);//ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
-	pauseMessage.setPosition({50.f,50.f});
-	pauseMessage.setCharacterSize(20);
+      if((uTurn)&&(!ds_item)){
+	FMenu.EtatDuMenu(Button,heart);
+	pauseMessage.setFont(lp_P.font);
+	pauseMessage.setString("*You are going to have a \n very bad Time.");
+	pauseMessage.setPosition({cadre1.spriteCadre.getPosition().x+20.f,cadre1.spriteCadre.getPosition().y+20.f});
+	pauseMessage.setCharacterSize(40);
 	if(presse==0){
-	  pauseMessage.setString("Vous etes a fight");
+	  combat.restart();
+	  pauseMessage.setPosition({50.f,50.f});
+	  pauseMessage.setString("");
 	  uTurn=false;
-	  heart.setPosition({50.f,50.f});
+	  cadre1.animationDebutFight(Timer,heart);
 	  FMenu.buttons[0].etat.left=0;
 	  FMenu.buttons[0].sprite.setTextureRect(FMenu.buttons[0].etat);
 	}
 	else if(presse==1){
+	  pauseMessage.setPosition({50.f,50.f});
 	  pauseMessage.setString("Vous etes a Act");
 	}
 	else if(presse==2){
-	  pauseMessage.setString("Vous etes a item");
+	  pauseMessage.setPosition({50.f,50.f});
+	  pauseMessage.setString("");
+	  ds_item=true;
+	  FMenu.buttons[2].etat.left=0;
+	  FMenu.buttons[2].sprite.setTextureRect(FMenu.buttons[2].etat);
+	  menu.drawTo(window, heart);
 	}
 	else if(presse==3){
+	  pauseMessage.setPosition({50.f,50.f});
 	  pauseMessage.setString("Vous etes a mercy");
 	}
       }
       window.clear(Color(Color::Black));
-      //cout<<"uTurn ="<<uTurn<<endl;
+      
       window.draw(pauseMessage);
+      cadre1.drawTo(window);
       sanscorps.drawTo(window);
       sanstete.drawTo(window);
       FMenu.drawTo(window,heart);
+      lp_P.drawTo(window);
+      test.drawTo(window);
+      if (presse==2){
+	menu.drawTo(window,heart);
+      }
       //cout<<heart.getX()<<endl;
     }
     window.display();
